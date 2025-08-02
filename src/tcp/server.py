@@ -3,9 +3,10 @@ import os
 import sys
 
 HOST = (socket.gethostname(), 10002)
-filename = "file_server.txt"
 max_turn = 10
 chunk = 1024
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+filename = os.path.join(PROJECT_ROOT, "file_server.txt")
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
