@@ -1,0 +1,1 @@
+Connected to ('ubuntu24', 10002)
