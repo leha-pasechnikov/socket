@@ -2,7 +2,7 @@ import socket
 import os
 import sys
 
-HOST = (socket.gethostname(), 1000)
+HOST = (socket.gethostname(), 10002)
 filename = "file_server.txt"
 max_turn = 10
 chunk = 1024
