@@ -3,65 +3,83 @@ import os
 import sys
 
 HOST = (socket.gethostname(), 8080)
-len_ind = 6
-chunk = 1024 + len_ind
-timeout = 5.0
+LEN_IND = 6  # length of package id
+CHUNK = 1024 + LEN_IND
+TIMEOUT = 5.0
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 filename = os.path.join(PROJECT_ROOT, "file_server.txt")
 
-server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-server.settimeout(timeout)
 
-try:
-    server.bind(HOST)
-except socket.error as err:
-    print(f"Ошибка, порт занят ({HOST})")
-    sys.exit(1)
-print("Server starting...")
+def main() -> None:
+    """The main function for sending a file by the UDP server"""
 
-while True:
+    server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.settimeout(TIMEOUT)
+
     try:
-        mess, addr = server.recvfrom(chunk)
-    except socket.timeout:
-        continue
-    except ConnectionResetError:
-        print(f'{addr[0]}:{addr[1]} Разорвал подключение')
-        continue
 
-    print("Началась передача файла")
+        try:
+            server.bind(HOST)
+        except socket.error:
+            print(f"Port is busy {HOST[0]}:{HOST[1]}")
+            sys.exit(1)
 
-    if os.path.exists(filename):
-        with open(filename, "rb") as file:
-            file_data = []
-            data = file.read(chunk)
-            while data:
-                file_data.append(data)
-                data = file.read(chunk)
-
-        mess_len = b"0"
-        attempt = 0
-        while mess_len != b'1':
-            server.sendto(str(len(file_data)).encode('utf-8'), addr)
-
+        print("Server starting...")
+        while True:
             try:
-                mess_len, addr = server.recvfrom(chunk)
-                attempt += 1
+                mess, addr = server.recvfrom(CHUNK)
+                print(f"Connected to {addr[0]}:{addr[1]}")
             except socket.timeout:
-                if attempt < 3:
-                    continue
-                else:
-                    break
+                continue
             except ConnectionResetError:
-                print(f'{addr[0]}:{addr[1]} Разорвал подключение')
-                break
+                print(f'Connection close')
+                continue
 
-            if mess_len == b"1":
-                for ind, mess in enumerate(file_data):
-                    server.sendto(mess + f'{ind:0{len_ind}}'.encode('utf-8'), addr)
-                    print(f"Отправлен {ind} пакет")
-            print("Отправка завершена")
+            print("Start send data")
+            if os.path.exists(filename):
+                with open(filename, "rb") as file:
+                    file_data = []
+                    data = file.read(CHUNK)
+                    while data:
+                        file_data.append(data)
+                        data = file.read(CHUNK)
 
-    else:
-        print(f"Ошибка, {filename} не существует")
-        sys.exit(1)
+                mess_len = b"0"  # Client message
+                attempt = 0  # File size send attempt counter
+                while mess_len != b'1':
+
+                    # Sending file size to the client and waiting for confirmation from it
+                    server.sendto(str(len(file_data)).encode('utf-8'), addr)
+                    try:
+                        mess_len, addr = server.recvfrom(CHUNK)
+                        attempt += 1
+                    except socket.timeout:
+                        if attempt < 3:
+                            continue
+                        else:
+                            break
+                    except ConnectionResetError:
+                        print(f'Connection {addr[0]}:{addr[1]} close')
+                        break
+
+                    # After confirmation, the file is sent
+                    if mess_len == b"1":
+                        for ind, mess in enumerate(file_data):
+                            server.sendto(mess + f'{ind:0{LEN_IND}}'.encode('utf-8'), addr)
+
+                    print("Sending is complete")
+
+            else:
+                print(f"Error: {filename} does not exist")
+                sys.exit(1)
+    except Exception as err:
+        print(f"Error: {err}")
+
+    finally:
+        server.close()
+        print("Server close")
+
+
+if __name__ == "__main__":
+    main()

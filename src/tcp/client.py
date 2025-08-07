@@ -3,25 +3,37 @@ import os
 
 HOST = (socket.gethostname(), 10002)
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-filename = os.path.join(PROJECT_ROOT, "file_client.txt")
-chunk = 1024
+FILENAME = os.path.join(PROJECT_ROOT, "file_client.txt")
+CHUNK = 1024
 
-try:
-    os.remove(filename)
-except FileNotFoundError:
-    pass
 
-client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client.connect(HOST)
-print(f"Connected to {HOST}")
+def main() -> None:
+    """The main function for receiving a file by the TCP client"""
 
-with open(filename, "wb") as file:
-    while True:
-        message = client.recv(chunk)
-        if not message:
-            break
-        print(message)
-        file.write(message)
+    # удаление старого файла
+    try:
+        os.remove(FILENAME)
+    except FileNotFoundError:
+        pass
 
-client.close()
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+    try:
+        client.connect(HOST)
+        print(f"Connected to {HOST[0]}:{HOST[1]}")
+
+        with open(FILENAME, "wb") as file:
+            while True:
+                message = client.recv(CHUNK)
+                if not message:
+                    break
+                file.write(message)
+    except Exception as err:
+        print(f"Error: {err}")
+    finally:
+        client.close()
+        print("Connection close")
+
+
+if __name__ == "__main__":
+    main()
